@@ -6,7 +6,7 @@ import { uploadFile, uploadMultipartFile } from '@internxt/sdk/dist/network/uplo
 import { downloadFile } from '@internxt/sdk/dist/network/download';
 
 import { getEncryptedFile, encryptStreamInParts, processEveryFileBlobReturnHash } from './crypto';
-import { DownloadProgressCallback, getDecryptedStream } from './download';
+import { DownloadProgressCallback, fetchFileWithBackPressure, getDecryptedStream } from './download';
 import { uploadFileBlob, UploadProgressCallback } from './upload';
 import { buildProgressStream } from 'app/core/services/stream.service';
 import { queue, QueueObject } from 'async';
@@ -38,6 +38,11 @@ interface DownloadOptions {
 interface UploadTask {
   contentToUpload: Blob;
   urlToUpload: string;
+  index: number;
+}
+
+interface DownloadTask {
+  url: string;
   index: number;
 }
 
@@ -263,15 +268,10 @@ export class NetworkFacade {
             throw new Error('Download aborted');
           }
 
-          const encryptedContentStream = await fetch(downloadable.url, {
-            signal: options?.abortController?.signal,
-          }).then((res) => {
-            if (!res.body) {
-              throw new Error('No content received');
-            }
-
-            return res.body;
-          });
+          const encryptedContentStream = await fetchFileWithBackPressure(
+            downloadable.url,
+            options?.abortController?.signal,
+          );
 
           encryptedContentStreams.push(encryptedContentStream);
         }

@@ -178,6 +178,34 @@ export function downloadFile(params: IDownloadParams): Promise<ReadableStream<Ui
   });
 }
 
+export const fetchFileWithBackPressure = async (
+  url: string,
+  signal: AbortSignal | undefined,
+): Promise<ReadableStream<Uint8Array>> => {
+  const response = await fetch(url, { signal });
+  const reader = response.body?.getReader();
+
+  if (!reader) {
+    throw new Error('No content received');
+  }
+
+  const stream = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      const { done, value } = await reader.read();
+      if (done) {
+        controller.close();
+        return;
+      }
+      controller.enqueue(value);
+    },
+    cancel() {
+      reader.releaseLock();
+    },
+  });
+
+  return stream;
+};
+
 async function _downloadFile(params: IDownloadParams): Promise<ReadableStream<Uint8Array>> {
   const { bucketId, fileId, token, creds } = params;
 
