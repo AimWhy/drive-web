@@ -28,6 +28,7 @@ const RecentsView = (props: RecentsViewProps) => {
   }, []);
 
   const fetchRecentsContent = () => {
+    dispatch(storageActions.setRecents([]));
     dispatch(storageThunks.fetchRecentsThunk());
   };
 
