@@ -138,9 +138,9 @@ export const doLogin = async (
     tfaCode: twoFactorCode,
   };
   const cryptoProvider: CryptoProvider = {
-    encryptPasswordHash(password: Password, encryptedSalt: string): string {
-      const salt = decryptText(encryptedSalt);
-      const hashObj = passToHash({ password, salt });
+    async encryptPasswordHash(password: Password, encryptedSalt: string): Promise<string> {
+      const salt = await decryptText(encryptedSalt);
+      const hashObj = await passToHash({ password, salt });
       return encryptText(hashObj.hash);
     },
     async generateKeys(password: Password): Promise<Keys> {
@@ -150,6 +150,14 @@ export const doLogin = async (
         privateKeyEncrypted: privateKeyArmoredEncrypted,
         publicKey: publicKeyArmored,
         revocationCertificate: revocationCertificate,
+        ecc: {
+          privateKeyEncrypted: privateKeyArmoredEncrypted,
+          publicKey: publicKeyArmored,
+        },
+        kyber: {
+          publicKey: '',
+          privateKeyEncrypted: '',
+        },
       };
       return keys;
     },
@@ -179,7 +187,7 @@ export const doLogin = async (
         );
       }
 
-      const clearMnemonic = decryptTextWithKey(user.mnemonic, password);
+      const clearMnemonic = await decryptTextWithKey(user.mnemonic, password);
       const clearUser = {
         ...user,
         mnemonic: clearMnemonic,
@@ -189,6 +197,10 @@ export const doLogin = async (
       localStorageService.set('xToken', token);
       localStorageService.set('xMnemonic', clearMnemonic);
       localStorageService.set('xNewToken', newToken);
+
+      const argon2 = await passToHash({ password });
+
+      await authClient.upgradeHash(argon2.hash, argon2.salt);
 
       return {
         user: clearUser,
@@ -223,8 +235,8 @@ export const getPasswordDetails = async (
   }
 
   // Encrypt  the password
-  const hashedCurrentPassword = passToHash({ password: currentPassword, salt }).hash;
-  const encryptedCurrentPassword = encryptText(hashedCurrentPassword);
+  const hashedCurrentPassword = (await passToHash({ password: currentPassword, salt })).hash;
+  const encryptedCurrentPassword = await encryptText(hashedCurrentPassword);
 
   return { salt, hashedCurrentPassword, encryptedCurrentPassword };
 };
@@ -240,11 +252,11 @@ const updateCredentialsWithToken = async (
     throw new Error('Invalid mnemonic');
   }
 
-  const hashedNewPassword = passToHash({ password: newPassword });
-  const encryptedHashedNewPassword = encryptText(hashedNewPassword.hash);
-  const encryptedHashedNewPasswordSalt = encryptText(hashedNewPassword.salt);
+  const hashedNewPassword = await passToHash({ password: newPassword });
+  const encryptedHashedNewPassword = await encryptText(hashedNewPassword.hash);
+  const encryptedHashedNewPasswordSalt = await encryptText(hashedNewPassword.salt);
 
-  const encryptedMnemonic = encryptTextWithKey(mnemonicInPlain, newPassword);
+  const encryptedMnemonic = await encryptTextWithKey(mnemonicInPlain, newPassword);
 
   const authClient = SdkFactory.getNewApiInstance().createAuthClient();
   return authClient.changePasswordWithLink(
@@ -263,11 +275,11 @@ const resetAccountWithToken = async (token: string | undefined, newPassword: str
     throw new Error('Invalid mnemonic');
   }
 
-  const encryptedNewMnemonic = encryptTextWithKey(newMnemonic, newPassword);
+  const encryptedNewMnemonic = await encryptTextWithKey(newMnemonic, newPassword);
 
-  const hashedNewPassword = passToHash({ password: newPassword });
-  const encryptedHashedNewPassword = encryptText(hashedNewPassword.hash);
-  const encryptedHashedNewPasswordSalt = encryptText(hashedNewPassword.salt);
+  const hashedNewPassword = await passToHash({ password: newPassword });
+  const encryptedHashedNewPassword = await encryptText(hashedNewPassword.hash);
+  const encryptedHashedNewPasswordSalt = await encryptText(hashedNewPassword.salt);
 
   const authClient = SdkFactory.getNewApiInstance().createAuthClient();
 
@@ -285,13 +297,13 @@ export const changePassword = async (newPassword: string, currentPassword: strin
   const { encryptedCurrentPassword } = await getPasswordDetails(currentPassword);
 
   // Encrypt the new password
-  const hashedNewPassword = passToHash({ password: newPassword });
-  const encryptedNewPassword = encryptText(hashedNewPassword.hash);
-  const encryptedNewSalt = encryptText(hashedNewPassword.salt);
+  const hashedNewPassword = await passToHash({ password: newPassword });
+  const encryptedNewPassword = await encryptText(hashedNewPassword.hash);
+  const encryptedNewSalt = await encryptText(hashedNewPassword.salt);
 
   // Encrypt the mnemonic
-  const encryptedMnemonic = encryptTextWithKey(user.mnemonic, newPassword);
-  const privateKey = Buffer.from(user.privateKey, 'base64').toString();
+  const encryptedMnemonic = await encryptTextWithKey(user.mnemonic, newPassword);
+  const privateKey = Buffer.from(user.keys.ecc.privateKey, 'base64').toString();
   const privateKeyEncrypted = aes.encrypt(privateKey, newPassword, getAesInitFromEnv());
 
   const usersClient = SdkFactory.getNewApiInstance().createNewUsersClient();
@@ -329,14 +341,14 @@ export const generateNew2FA = (): Promise<TwoFactorAuthQR> => {
   return authClient.generateTwoFactorAuthQR();
 };
 
-export const deactivate2FA = (
+export const deactivate2FA = async (
   passwordSalt: string,
   deactivationPassword: string,
   deactivationCode: string,
 ): Promise<void> => {
-  const salt = decryptText(passwordSalt);
-  const hashObj = passToHash({ password: deactivationPassword, salt });
-  const encPass = encryptText(hashObj.hash);
+  const salt = await decryptText(passwordSalt);
+  const hashObj = await passToHash({ password: deactivationPassword, salt });
+  const encPass = await encryptText(hashObj.hash);
   const authClient = SdkFactory.getInstance().createAuthClient();
   return authClient.disableTwoFactorAuth(encPass, deactivationCode);
 };
@@ -356,7 +368,7 @@ export const getNewToken = async (): Promise<string> => {
 
 export async function areCredentialsCorrect(email: string, password: string): Promise<boolean> {
   const salt = await getSalt();
-  const { hash: hashedPassword } = passToHash({ password, salt });
+  const { hash: hashedPassword } = await passToHash({ password, salt });
   const authClient = SdkFactory.getInstance().createAuthClient();
 
   return authClient.areCredentialsCorrect(email, hashedPassword);
@@ -460,8 +472,8 @@ export const signUp = async (params: SignUpParams) => {
   const xNewToken = await getNewToken();
   localStorageService.set('xNewToken', xNewToken);
 
-  const privateKey = xUser.privateKey
-    ? Buffer.from(decryptPrivateKey(xUser.privateKey, password)).toString('base64')
+  const privateKey = xUser.keys.ecc.privateKey
+    ? Buffer.from(decryptPrivateKey(xUser.keys.ecc.privateKey, password)).toString('base64')
     : undefined;
 
   const user = {

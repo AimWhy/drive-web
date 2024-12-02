@@ -49,13 +49,13 @@ export function useSignUp(
 } {
   const updateInfo: UpdateInfoFunction = async (email: string, password: string) => {
     // Setup hash and salt
-    const hashObj = passToHash({ password });
+    const hashObj = await passToHash({ password });
     const encPass = encryptText(hashObj.hash);
     const encSalt = encryptText(hashObj.salt);
 
     // Setup mnemonic
     const mnemonic = bip39.generateMnemonic(256);
-    const encMnemonic = encryptTextWithKey(mnemonic, password);
+    const encMnemonic = await encryptTextWithKey(mnemonic, password);
 
     const registerUserPayload = {
       email: email.toLowerCase(),
@@ -93,11 +93,11 @@ export function useSignUp(
   };
 
   const doRegister = async (email: string, password: string, captcha: string) => {
-    const hashObj = passToHash({ password });
-    const encPass = encryptText(hashObj.hash);
-    const encSalt = encryptText(hashObj.salt);
+    const hashObj = await passToHash({ password });
+    const encPass = await encryptText(hashObj.hash);
+    const encSalt = await encryptText(hashObj.salt);
     const mnemonic = bip39.generateMnemonic(256);
-    const encMnemonic = encryptTextWithKey(mnemonic, password);
+    const encMnemonic = await encryptTextWithKey(mnemonic, password);
 
     const { privateKeyArmored, publicKeyArmored, revocationCertificate } = await generateNewKeys();
     const encPrivateKey = aes.encrypt(privateKeyArmored, password, getAesInitFromEnv());
@@ -108,6 +108,14 @@ export function useSignUp(
       privateKeyEncrypted: encPrivateKey,
       publicKey: publicKeyArmored,
       revocationCertificate: revocationCertificate,
+      ecc: {
+        privateKeyEncrypted: encPrivateKey,
+        publicKey: publicKeyArmored,
+      },
+      kyber: {
+        publicKey: '',
+        privateKeyEncrypted: '',
+      },
     };
     const registerDetails: RegisterDetails = {
       name: 'My',
@@ -127,7 +135,7 @@ export function useSignUp(
     const user: UserSettings = data.user as unknown as UserSettings;
 
     // user.privateKey = Buffer.from(aes.decrypt(user.privateKey, password)).toString('base64');
-    user.mnemonic = decryptTextWithKey(user.mnemonic, password);
+    user.mnemonic = await decryptTextWithKey(user.mnemonic, password);
 
     return { xUser: user, xToken: token, mnemonic: user.mnemonic };
   };
@@ -141,7 +149,7 @@ export function useSignUp(
     const { token } = data;
     const user = data.user as UserSettings;
 
-    user.mnemonic = decryptTextWithKey(user.mnemonic, password);
+    user.mnemonic = await decryptTextWithKey(user.mnemonic, password);
 
     return {
       xUser: {
@@ -158,11 +166,11 @@ export function useSignUp(
     password: string,
     captcha: string,
   ): Promise<RegisterDetails> => {
-    const hashObj = passToHash({ password });
-    const encPass = encryptText(hashObj.hash);
-    const encSalt = encryptText(hashObj.salt);
+    const hashObj = await passToHash({ password });
+    const encPass = await encryptText(hashObj.hash);
+    const encSalt = await encryptText(hashObj.salt);
     const mnemonic = bip39.generateMnemonic(256);
-    const encMnemonic = encryptTextWithKey(mnemonic, password);
+    const encMnemonic = await encryptTextWithKey(mnemonic, password);
 
     const { privateKeyArmored, publicKeyArmored, revocationCertificate } = await generateNewKeys();
     const encPrivateKey = aes.encrypt(privateKeyArmored, password, getAesInitFromEnv());
@@ -171,6 +179,14 @@ export function useSignUp(
       privateKeyEncrypted: encPrivateKey,
       publicKey: publicKeyArmored,
       revocationCertificate: revocationCertificate,
+      ecc: {
+        privateKeyEncrypted: encPrivateKey,
+        publicKey: publicKeyArmored,
+      },
+      kyber: {
+        publicKey: '',
+        privateKeyEncrypted: '',
+      },
     };
     const registerDetails: RegisterDetails = {
       name: 'My',

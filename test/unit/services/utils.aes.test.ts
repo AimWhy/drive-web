@@ -2,11 +2,7 @@
  * @jest-environment jsdom
  */
 
-import {
-  encryptText,
-  decryptText,
-  decryptTextWithKey,
-} from '../../../src/app/crypto/services/utils';
+import { encryptText, decryptText, decryptTextWithKey } from '../../../src/app/crypto/services/utils';
 
 import { describe, expect, it, afterAll, beforeAll } from 'vitest';
 import CryptoJS from 'crypto-js';
@@ -37,7 +33,7 @@ describe('Test encryption', () => {
   it('decryptTextWithKey should fail with an empty key', async () => {
     const message = 'Test message';
     const ciphertext = await encryptText(message);
-    expect(() => decryptTextWithKey(ciphertext, '')).toThrowError('No key defined. Check .env file');
+    await expect(decryptTextWithKey(ciphertext, '')).rejects.toThrowError('No key defined. Check .env file');
   });
 
   function oldEncryptTextWithKey(textToEncrypt: string, keyToEncrypt: string): string {
@@ -59,7 +55,7 @@ describe('Test encryption', () => {
     const message = 'Test message';
     const key = '123456789QWERTY';
     const ciphertext = oldEncryptTextWithKey(message, key);
-    const result = decryptTextWithKey(ciphertext, key);
+    const result = await decryptTextWithKey(ciphertext, key);
     expect(result).toBe(message);
   });
 
@@ -67,7 +63,7 @@ describe('Test encryption', () => {
     const message = 'Test message';
     const key = '123456789QWERTY';
     const ciphertext = oldEncryptTextWithKey(message, key);
-    const result = decryptTextWithKey(message, key);
+    const result = await decryptTextWithKey(ciphertext, key);
     const oldResult = oldDecryptTextWithKey(ciphertext, key);
     expect(result).toBe(oldResult);
   });
