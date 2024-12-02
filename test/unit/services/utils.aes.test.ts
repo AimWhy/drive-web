@@ -4,7 +4,6 @@
 
 import {
   encryptText,
-  encryptTextWithKey,
   decryptText,
   decryptTextWithKey,
 } from '../../../src/app/crypto/services/utils';
@@ -30,14 +29,14 @@ describe('Test encryption', () => {
   it('Should be able to encrypt and decrypt', async () => {
     const message = 'Test message';
     expect(process.env.REACT_APP_CRYPTO_SECRET, '123456789QWERTY');
-    const ciphertext = encryptText(message);
-    const result = decryptText(ciphertext);
+    const ciphertext = await encryptText(message);
+    const result = await decryptText(ciphertext);
     expect(result).toBe(message);
   });
 
   it('decryptTextWithKey should fail with an empty key', async () => {
     const message = 'Test message';
-    const ciphertext = encryptText(message);
+    const ciphertext = await encryptText(message);
     expect(() => decryptTextWithKey(ciphertext, '')).toThrowError('No key defined. Check .env file');
   });
 
@@ -56,15 +55,6 @@ describe('Test encryption', () => {
     return bytes.toString(CryptoJS.enc.Utf8);
   }
 
-  it('decryptTextWithKey should give the same result as before', async () => {
-    const message = 'Test message';
-    const key = '123456789QWERTY';
-    const ciphertext = encryptTextWithKey(message, key);
-    const result = decryptTextWithKey(ciphertext, key);
-    const oldResult = oldDecryptTextWithKey(ciphertext, key);
-    expect(result).toBe(oldResult);
-  });
-
   it('decryptTextWithKey should decrypt old ciphertext', async () => {
     const message = 'Test message';
     const key = '123456789QWERTY';
@@ -73,11 +63,12 @@ describe('Test encryption', () => {
     expect(result).toBe(message);
   });
 
-  it('encryptTextWithKey should work with old decrypt', async () => {
+  it('decryptTextWithKey should should give the same result as old decrypt', async () => {
     const message = 'Test message';
     const key = '123456789QWERTY';
-    const ciphertext = encryptTextWithKey(message, key);
-    const result = oldDecryptTextWithKey(ciphertext, key);
-    expect(result).toBe(message);
+    const ciphertext = oldEncryptTextWithKey(message, key);
+    const result = decryptTextWithKey(message, key);
+    const oldResult = oldDecryptTextWithKey(ciphertext, key);
+    expect(result).toBe(oldResult);
   });
 });

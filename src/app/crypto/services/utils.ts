@@ -6,6 +6,11 @@ import { createSHA512, createHMAC, sha256, createSHA256, sha512, ripemd160 } fro
 import { Buffer } from 'buffer';
 import crypto from 'crypto';
 
+
+const AES_SALT_LEN = 16;
+const AES_IV_LEN = 12;
+const AES_ALG = 'aes-256-cbc';
+
 /**
  * Computes hmac-sha512
  * @param {string} encryptionKeyHex - The hmac key in HEX format
@@ -92,7 +97,7 @@ function passToHash(passObject: PassObjectInterface): { salt: string; hash: stri
  * @param {string} textToEncrypt - The plain text
  * @returns {string} The ciphertext
  */
-function encryptText(textToEncrypt: string): string {
+async function encryptText(textToEncrypt: string): Promise<string> {
   return encryptTextWithKey(textToEncrypt, process.env.REACT_APP_CRYPTO_SECRET);
 }
 
@@ -101,7 +106,7 @@ function encryptText(textToEncrypt: string): string {
  * @param {string} encryptedText - The ciphertext
  * @returns {string} The plain text
  */
-function decryptText(encryptedText: string): string {
+async function decryptText(encryptedText: string): Promise<string> {
   return decryptTextWithKey(encryptedText, process.env.REACT_APP_CRYPTO_SECRET);
 }
 
@@ -111,21 +116,12 @@ function decryptText(encryptedText: string): string {
  * @param {string} keyToEncrypt - The password
  * @returns {string} The ciphertext
  */
-function encryptTextWithKey(textToEncrypt: string, keyToEncrypt: string): string {
-  const salt = crypto.randomBytes(8);
-  const password = Buffer.concat([Buffer.from(keyToEncrypt, 'binary'), salt]);
-  const hash: Buffer[] = [];
-  let digest = password;
-  for (let i = 0; i < 3; i++) {
-    hash[i] = crypto.createHash('md5').update(digest).digest();
-    digest = Buffer.concat([hash[i], password]);
-  }
-  const keyDerivation = Buffer.concat(hash);
-  const key = keyDerivation.subarray(0, 32);
-  const iv = keyDerivation.subarray(32);
-  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+async function encryptTextWithKey(textToEncrypt: string, keyToEncrypt: string): Promise<string> {
+  const salt = crypto.randomBytes(AES_SALT_LEN);
+  const iv = crypto.randomBytes(AES_IV_LEN);
+  const key = await getArgon2(keyToEncrypt, salt.toString('hex'), ARGON2ID_SALT_LEN);
+  const cipher = crypto.createCipheriv(AES_ALG, key, iv);
   const result = Buffer.concat([
-    Buffer.from('Salted__', 'utf8'),
     salt,
     cipher.update(textToEncrypt),
     cipher.final(),
@@ -140,11 +136,36 @@ function encryptTextWithKey(textToEncrypt: string, keyToEncrypt: string): string
  * @param {string} keyToEncrypt - The password
  * @returns {string} The plain text
  */
-function decryptTextWithKey(encryptedText: string, keyToDecrypt: string): string {
+async function decryptTextWithKey(encryptedText: string, keyToDecrypt: string): Promise<string> {
   if (!keyToDecrypt) {
     throw new Error('No key defined. Check .env file');
   }
+  let result;
 
+  // if starts with Salted_ => old CryptoJS
+  if (encryptedText.startsWith('U2FsdGVkX19')) {
+    result = decryptTextWithKeyCryptoJs(encryptedText, keyToDecrypt);
+  } else {
+    const cipher = Buffer.from(encryptedText, 'hex');
+    const salt = cipher.subarray(0, AES_SALT_LEN).toString('hex');
+    const iv = cipher.subarray(AES_SALT_LEN, AES_SALT_LEN + AES_IV_LEN).toString();
+    const key = await getArgon2(keyToDecrypt, salt, ARGON2ID_SALT_LEN);
+    const decipher = crypto.createDecipheriv(AES_ALG, key, iv);
+    let output = decipher.update(cipher);
+    output = Buffer.concat([result, decipher.final()]);
+    result = output.toString('utf8');
+  }
+
+  return result;
+}
+
+/**
+ * AES plain text decryption with the given password (identical to what CryptoJS does)
+ * @param {string} encryptedText - The ciphertext
+ * @param {string} keyToEncrypt - The password
+ * @returns {string} The plain text
+ */
+function decryptTextWithKeyCryptoJs(encryptedText: string, keyToDecrypt: string): string {
   const cypher = Buffer.from(encryptedText, 'hex');
 
   const salt = cypher.subarray(8, 16);
