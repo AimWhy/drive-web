@@ -198,10 +198,6 @@ export const doLogin = async (
       localStorageService.set('xMnemonic', clearMnemonic);
       localStorageService.set('xNewToken', newToken);
 
-      const argon2 = await passToHash({ password });
-
-      await authClient.upgradeHash(argon2.hash, argon2.salt);
-
       return {
         user: clearUser,
         token: token,
@@ -476,7 +472,7 @@ export const signUp = async (params: SignUpParams) => {
   localStorageService.set('xNewToken', xNewToken);
 
   const privateKey = xUser.keys.ecc.privateKey
-    ? Buffer.from(decryptPrivateKey(xUser.keys.ecc.privateKey, password)).toString('base64')
+    ? Buffer.from(decryptPrivateKey(xUser.privateKey, password)).toString('base64')
     : undefined;
 
   const user = {
