@@ -311,18 +311,6 @@ const DriveExplorer = (props: DriveExplorerProps): JSX.Element => {
       });
     }
   }, []);
-  /*
-  useEffect(() => {
-    const handleContextmenu = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsOpen((prev) => !prev);
-    };
-    document.addEventListener('mousedown', handleContextmenu);
-    return function cleanup() {
-      document.removeEventListener('mousedown', handleContextmenu);
-    };
-  }, []);*/
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -378,7 +366,6 @@ const DriveExplorer = (props: DriveExplorerProps): JSX.Element => {
   }, [currentFolderId]);
 
   const onUploadFolderButtonClicked = useCallback((): void => {
-    console.log('llamada');
     errorService.addBreadcrumb({
       level: 'info',
       category: 'button',
