@@ -6,7 +6,7 @@ import {
   getDatabaseFileSourceData,
   updateDatabaseFileSourceData,
 } from 'app/drive/services/database.service';
-import { DriveItemData } from 'app/drive/types';
+import { DriveFileData, DriveItemData } from 'app/drive/types';
 import { AdvancedSharedItem, PreviewFileItem } from 'app/share/types';
 import { ListItemMenu } from 'app/shared/components/List/ListItem';
 import { DriveItemActions } from '../../DriveExplorer/DriveExplorerItem/hooks/useDriveItemActions';
@@ -151,7 +151,10 @@ const topDropdownBarActionsMenu = ({
   return contextMenuActions();
 };
 
-function getFileContentManager(currentFile, downloadFile) {
+function getFileContentManager(
+  currentFile: DriveFileData,
+  downloadFile: (currentFile: PreviewFileItem, abortController: AbortController) => Promise<Blob>,
+) {
   const abortController = new AbortController();
 
   return {

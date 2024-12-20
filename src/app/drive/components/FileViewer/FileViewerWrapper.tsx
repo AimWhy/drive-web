@@ -31,6 +31,7 @@ import {
   useFileViewerKeyboardShortcuts,
 } from './utils/fileViewerWrapperUtils';
 import { FileToUpload } from '../../../drive/services/file.service/types';
+import { getIsTypeAllowedAndFileExtensionGroupValues } from './utils/fileViewerUtils';
 
 export type TopBarActionsMenu = ListItemMenu<DriveItemData> | ListItemMenu<AdvancedSharedItem> | undefined;
 
@@ -72,6 +73,10 @@ const FileViewerWrapper = ({
 
   const [blob, setBlob] = useState<Blob | null>(null);
 
+  const extensionGroup = getIsTypeAllowedAndFileExtensionGroupValues(currentFile);
+  const isTypeAllowed = extensionGroup?.isTypeAllowed ?? false;
+  const fileExtensionGroup = extensionGroup?.fileExtensionGroup;
+
   const user = localStorageService.getUser();
   const userEmail = user?.email;
 
@@ -86,7 +91,7 @@ const FileViewerWrapper = ({
   useEffect(() => {
     setBlob(null);
     dispatch(uiActions.setFileViewerItem(currentFile));
-    if (currentFile && !updateProgress && !isDownloadStarted) {
+    if (currentFile && isTypeAllowed && !updateProgress && !isDownloadStarted) {
       setIsDownloadStarted(true);
       fileContentManager
         .download()
@@ -100,6 +105,7 @@ const FileViewerWrapper = ({
         })
         .catch((error) => {
           if (error.name === 'AbortError') {
+            console.log('ABORTED');
             return;
           }
           console.error(error);
@@ -170,6 +176,7 @@ const FileViewerWrapper = ({
 
   //Switch to the next or previous file in the folder
   function changeFile(direction: 'next' | 'prev') {
+    fileContentManager.abort();
     setBlob(null);
     setIsDownloadStarted(false);
     setUpdateProgress(0);
@@ -291,6 +298,8 @@ const FileViewerWrapper = ({
     <FileViewer
       show={showPreview}
       file={currentFile}
+      isTypeAllowed={isTypeAllowed}
+      fileExtensionGroup={fileExtensionGroup}
       onClose={() => {
         onClose();
         fileContentManager.abort();

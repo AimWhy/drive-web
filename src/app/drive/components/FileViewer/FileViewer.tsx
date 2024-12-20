@@ -28,6 +28,8 @@ interface FileViewerProps {
   onDownload: () => void;
   show: boolean;
   isAuthenticated: boolean;
+  isTypeAllowed: boolean;
+  fileExtensionGroup: FileExtensionGroup;
   progress?: number;
   isShareView?: boolean;
   blob?: Blob | null;
@@ -61,6 +63,8 @@ const FileViewer = ({
   onClose,
   onDownload,
   show,
+  fileExtensionGroup,
+  isTypeAllowed,
   progress,
   isAuthenticated,
   isShareView,
@@ -79,9 +83,6 @@ const FileViewer = ({
   const [isPreviewAvailable, setIsPreviewAvailable] = useState<boolean>(true);
 
   const extensionGroup = getIsTypeAllowedAndFileExtensionGroupValues(file);
-
-  const isTypeAllowed = extensionGroup?.isTypeAllowed;
-  const fileExtensionGroup = extensionGroup?.fileExtensionGroup;
 
   const Viewer: React.FC<FormatFileViewerProps> = isTypeAllowed
     ? viewers[fileExtensionGroup as FileExtensionGroup]

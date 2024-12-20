@@ -29,6 +29,7 @@ import AppError from '../../../core/types';
 import { Button } from '@internxt/internxtui';
 import SendBanner from './SendBanner';
 import ShareItemPwdView from './ShareItemPwdView';
+import { getIsTypeAllowedAndFileExtensionGroupValues } from 'app/drive/components/FileViewer/utils/fileViewerUtils';
 
 export interface ShareViewProps extends ShareViewState {
   match: match<{
@@ -70,6 +71,8 @@ export default function ShareFileView(props: ShareViewProps): JSX.Element {
   const [itemPassword, setItemPassword] = useState('');
   const [sendBannerVisible, setIsSendBannerVisible] = useState(false);
   const [blob, setBlob] = useState<Blob | null>(null);
+  const extensionGroup = getIsTypeAllowedAndFileExtensionGroupValues(info!['item']);
+  const fileExtensionGroup = extensionGroup?.fileExtensionGroup;
 
   let body;
 
@@ -344,6 +347,8 @@ export default function ShareFileView(props: ShareViewProps): JSX.Element {
       <SendBanner sendBannerVisible={sendBannerVisible} setIsSendBannerVisible={setIsSendBannerVisible} />
       <FileViewer
         show={openPreview}
+        fileExtensionGroup={fileExtensionGroup}
+        isTypeAllowed={isTypeAllowed() ?? false}
         file={info!['item']}
         onClose={closePreview}
         onDownload={onDownloadFromPreview}
