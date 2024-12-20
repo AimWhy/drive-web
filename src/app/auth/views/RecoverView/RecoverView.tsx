@@ -97,7 +97,7 @@ export default function RecoverView(): JSX.Element {
   ): Promise<void> => {
     const mnemonic = user.mnemonic;
 
-    const clearMnemonic = await decryptTextWithKey(mnemonic, last_password);
+    const clearMnemonic = decryptTextWithKey(mnemonic, last_password);
     const isCorrupted = checkIfMnemonicIsCorrupted(clearMnemonic);
 
     if (isCorrupted) {

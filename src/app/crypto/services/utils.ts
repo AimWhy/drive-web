@@ -1,19 +1,10 @@
+import CryptoJS from 'crypto-js';
 import { DriveItemData } from '../../drive/types';
 import { aes, items as itemUtils } from '@internxt/lib';
 import { AdvancedSharedItem } from '../../share/types';
 import { Buffer } from 'buffer';
 import crypto from 'crypto';
-import {
-  createSHA512,
-  createSHA256,
-  argon2id,
-  pbkdf2,
-  createHMAC,
-  sha256,
-  sha512,
-  ripemd160,
-  createSHA1,
-} from 'hash-wasm';
+import { createSHA512, createSHA256, argon2id, createHMAC, sha256, sha512, ripemd160 } from 'hash-wasm';
 
 const AES_IV_LEN = 16;
 const AES_ALG = 'aes-256-gcm';
@@ -29,9 +20,6 @@ const ARGON2ID_ITERATIONS = 3;
 const ARGON2ID_MEMORY = 65536;
 const ARGON2ID_TAG_LEN = 32;
 const ARGON2ID_SALT_LEN = 16;
-
-const PBKDF2_ITERATIONS = 10000;
-const PBKDF2_TAG_LEN = 32;
 
 interface PassObjectInterface {
   salt?: string | null;
@@ -103,30 +91,6 @@ function getRipemd160FromHex(dataHex: string): Promise<string> {
 }
 
 /**
- * Computes PBKDF2 and outputs the result in HEX format
- * @param {string} password - The password
- * @param {number} salt - The salt
- * @param {number}[iterations=PBKDF2_ITERATIONS] - The number of iterations to perform
- * @param {number} [hashLength=PBKDF2_TAG_LEN] - The desired output length
- * @returns {Promise<string>} The result of PBKDF2 in HEX format
- */
-function getPBKDF2(
-  password: string,
-  salt: string | Uint8Array,
-  iterations = PBKDF2_ITERATIONS,
-  hashLength = PBKDF2_TAG_LEN,
-): Promise<string> {
-  return pbkdf2({
-    password,
-    salt,
-    iterations,
-    hashLength,
-    hashFunction: createSHA1(),
-    outputType: 'hex',
-  });
-}
-
-/**
  * Computes Argon2 and outputs the result in HEX format
  * @param {string} password - The password
  * @param {number} salt - The salt
@@ -156,48 +120,16 @@ function getArgon2(
     outputType,
   });
 }
-/**
- * Converts HEX string to Uint8Array the same way CryptoJS did it (for compatibility)
- * @param {string} hex - The input string in HEX
- * @returns {Uint8Array} The resulting Uint8Array identical to what CryptoJS previously did
- */
-function hex2oldEncoding(hex: string): Uint8Array {
-  const words: number[] = [];
-  for (let i = 0; i < hex.length; i += 8) {
-    words.push(parseInt(hex.slice(i, i + 8), 16) | 0);
-  }
-  const sigBytes = hex.length / 2;
-  const uint8Array = new Uint8Array(sigBytes);
 
-  for (let i = 0; i < sigBytes; i++) {
-    uint8Array[i] = (words[i >>> 2] >>> ((3 - (i % 4)) * 8)) & 0xff;
-  }
-
-  return uint8Array;
-}
-/**
- * Password hash computation. If no salt or salt starts with 'argon2id$'  - uses Argon2, else - PBKDF2
- * @param {PassObjectInterface} passObject - The input object containing password and salt (optional)
- * @returns {Promise<{salt: string; hash: string }>} The resulting hash and salt
- */
-async function passToHash(passObject: PassObjectInterface): Promise<{ salt: string; hash: string }> {
-  let salt;
-  let hash;
-
-  if (!passObject.salt) {
-    const argonSalt = crypto.randomBytes(ARGON2ID_SALT_LEN).toString('hex');
-    hash = await getArgon2(passObject.password, argonSalt);
-    salt = 'argon2id$' + argonSalt;
-  } else if (passObject.salt.startsWith('argon2id$')) {
-    const argonSalt = passObject.salt.replace('argon2id$', '');
-    hash = await getArgon2(passObject.password, argonSalt);
-    salt = passObject.salt;
-  } else {
-    salt = passObject.salt;
-    const encoded = hex2oldEncoding(salt);
-    hash = await getPBKDF2(passObject.password, encoded);
-  }
-  return { salt, hash };
+// Method to hash password. If salt is passed, use it, in other case use crypto lib for generate salt
+function passToHash(passObject: PassObjectInterface): { salt: string; hash: string } {
+  const salt = passObject.salt ? CryptoJS.enc.Hex.parse(passObject.salt) : CryptoJS.lib.WordArray.random(128 / 8);
+  const hash = CryptoJS.PBKDF2(passObject.password, salt, { keySize: 256 / 32, iterations: 10000 });
+  const hashedObjetc = {
+    salt: salt.toString(),
+    hash: hash.toString(),
+  };
+  return hashedObjetc;
 }
 
 /**
@@ -334,6 +266,4 @@ export {
   getSha512FromHex,
   getRipemd160FromHex,
   getArgon2,
-  getPBKDF2,
-  hex2oldEncoding,
 };

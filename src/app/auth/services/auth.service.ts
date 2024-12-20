@@ -140,7 +140,7 @@ export const doLogin = async (
   const cryptoProvider: CryptoProvider = {
     async encryptPasswordHash(password: Password, encryptedSalt: string): Promise<string> {
       const salt = await decryptText(encryptedSalt);
-      const hashObj = await passToHash({ password, salt });
+      const hashObj = passToHash({ password, salt });
       return encryptText(hashObj.hash);
     },
     async generateKeys(password: Password): Promise<Keys> {
@@ -150,14 +150,6 @@ export const doLogin = async (
         privateKeyEncrypted: privateKeyArmoredEncrypted,
         publicKey: publicKeyArmored,
         revocationCertificate: revocationCertificate,
-        ecc: {
-          privateKeyEncrypted: privateKeyArmoredEncrypted,
-          publicKey: publicKeyArmored,
-        },
-        kyber: {
-          publicKey: '',
-          privateKeyEncrypted: '',
-        },
       };
       return keys;
     },
@@ -187,7 +179,7 @@ export const doLogin = async (
         );
       }
 
-      const clearMnemonic = await decryptTextWithKey(user.mnemonic, password);
+      const clearMnemonic = decryptTextWithKey(user.mnemonic, password);
       const clearUser = {
         ...user,
         mnemonic: clearMnemonic,
@@ -231,8 +223,8 @@ export const getPasswordDetails = async (
   }
 
   // Encrypt  the password
-  const hashedCurrentPassword = (await passToHash({ password: currentPassword, salt })).hash;
-  const encryptedCurrentPassword = await encryptText(hashedCurrentPassword);
+  const hashedCurrentPassword = passToHash({ password: currentPassword, salt }).hash;
+  const encryptedCurrentPassword = encryptText(hashedCurrentPassword);
 
   return { salt, hashedCurrentPassword, encryptedCurrentPassword };
 };
@@ -248,11 +240,11 @@ const updateCredentialsWithToken = async (
     throw new Error('Invalid mnemonic');
   }
 
-  const hashedNewPassword = await passToHash({ password: newPassword });
-  const encryptedHashedNewPassword = await encryptText(hashedNewPassword.hash);
-  const encryptedHashedNewPasswordSalt = await encryptText(hashedNewPassword.salt);
+  const hashedNewPassword = passToHash({ password: newPassword });
+  const encryptedHashedNewPassword = encryptText(hashedNewPassword.hash);
+  const encryptedHashedNewPasswordSalt = encryptText(hashedNewPassword.salt);
 
-  const encryptedMnemonic = await encryptTextWithKey(mnemonicInPlain, newPassword);
+  const encryptedMnemonic = encryptTextWithKey(mnemonicInPlain, newPassword);
 
   const authClient = SdkFactory.getNewApiInstance().createAuthClient();
   return authClient.changePasswordWithLink(
@@ -271,11 +263,11 @@ const resetAccountWithToken = async (token: string | undefined, newPassword: str
     throw new Error('Invalid mnemonic');
   }
 
-  const encryptedNewMnemonic = await encryptTextWithKey(newMnemonic, newPassword);
+  const encryptedNewMnemonic = encryptTextWithKey(newMnemonic, newPassword);
 
-  const hashedNewPassword = await passToHash({ password: newPassword });
-  const encryptedHashedNewPassword = await encryptText(hashedNewPassword.hash);
-  const encryptedHashedNewPasswordSalt = await encryptText(hashedNewPassword.salt);
+  const hashedNewPassword = passToHash({ password: newPassword });
+  const encryptedHashedNewPassword = encryptText(hashedNewPassword.hash);
+  const encryptedHashedNewPasswordSalt = encryptText(hashedNewPassword.salt);
 
   const authClient = SdkFactory.getNewApiInstance().createAuthClient();
 
@@ -293,13 +285,13 @@ export const changePassword = async (newPassword: string, currentPassword: strin
   const { encryptedCurrentPassword } = await getPasswordDetails(currentPassword);
 
   // Encrypt the new password
-  const hashedNewPassword = await passToHash({ password: newPassword });
-  const encryptedNewPassword = await encryptText(hashedNewPassword.hash);
-  const encryptedNewSalt = await encryptText(hashedNewPassword.salt);
+  const hashedNewPassword = passToHash({ password: newPassword });
+  const encryptedNewPassword = encryptText(hashedNewPassword.hash);
+  const encryptedNewSalt = encryptText(hashedNewPassword.salt);
 
   // Encrypt the mnemonic
-  const encryptedMnemonic = await encryptTextWithKey(user.mnemonic, newPassword);
-  const privateKey = Buffer.from(user.keys.ecc.privateKey, 'base64').toString();
+  const encryptedMnemonic = encryptTextWithKey(user.mnemonic, newPassword);
+  const privateKey = Buffer.from(user.privateKey, 'base64').toString();
   const privateKeyEncrypted = aes.encrypt(privateKey, newPassword, getAesInitFromEnv());
 
   const usersClient = SdkFactory.getNewApiInstance().createNewUsersClient();
@@ -337,14 +329,14 @@ export const generateNew2FA = (): Promise<TwoFactorAuthQR> => {
   return authClient.generateTwoFactorAuthQR();
 };
 
-export const deactivate2FA = async (
+export const deactivate2FA = (
   passwordSalt: string,
   deactivationPassword: string,
   deactivationCode: string,
 ): Promise<void> => {
-  const salt = await decryptText(passwordSalt);
-  const hashObj = await passToHash({ password: deactivationPassword, salt });
-  const encPass = await encryptText(hashObj.hash);
+  const salt = decryptText(passwordSalt);
+  const hashObj = passToHash({ password: deactivationPassword, salt });
+  const encPass = encryptText(hashObj.hash);
   const authClient = SdkFactory.getInstance().createAuthClient();
   return authClient.disableTwoFactorAuth(encPass, deactivationCode);
 };
@@ -367,7 +359,7 @@ export const getNewToken = async (): Promise<string> => {
 
 export async function areCredentialsCorrect(email: string, password: string): Promise<boolean> {
   const salt = await getSalt();
-  const { hash: hashedPassword } = await passToHash({ password, salt });
+  const { hash: hashedPassword } = passToHash({ password, salt });
   const authClient = SdkFactory.getInstance().createAuthClient();
 
   return authClient.areCredentialsCorrect(email, hashedPassword);
@@ -471,7 +463,7 @@ export const signUp = async (params: SignUpParams) => {
   const xNewToken = await getNewToken();
   localStorageService.set('xNewToken', xNewToken);
 
-  const privateKey = xUser.keys.ecc.privateKey
+  const privateKey = xUser.privateKey
     ? Buffer.from(decryptPrivateKey(xUser.privateKey, password)).toString('base64')
     : undefined;
 

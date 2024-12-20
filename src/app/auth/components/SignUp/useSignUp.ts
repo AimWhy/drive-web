@@ -49,7 +49,7 @@ export function useSignUp(
 } {
   const updateInfo: UpdateInfoFunction = async (email: string, password: string) => {
     // Setup hash and salt
-    const hashObj = await passToHash({ password });
+    const hashObj = passToHash({ password });
     const encPass = encryptText(hashObj.hash);
     const encSalt = encryptText(hashObj.salt);
 
@@ -96,7 +96,7 @@ export function useSignUp(
   };
 
   const doRegister = async (email: string, password: string, captcha: string) => {
-    const hashObj = await passToHash({ password });
+    const hashObj = passToHash({ password });
     const encPass = await encryptText(hashObj.hash);
     const encSalt = await encryptText(hashObj.salt);
     const mnemonic = bip39.generateMnemonic(256);
@@ -111,14 +111,6 @@ export function useSignUp(
       privateKeyEncrypted: encPrivateKey,
       publicKey: publicKeyArmored,
       revocationCertificate: revocationCertificate,
-      ecc: {
-        privateKeyEncrypted: encPrivateKey,
-        publicKey: publicKeyArmored,
-      },
-      kyber: {
-        publicKey: '',
-        privateKeyEncrypted: '',
-      },
     };
     const registerDetails: RegisterDetails = {
       name: 'My',
@@ -169,7 +161,7 @@ export function useSignUp(
     password: string,
     captcha: string,
   ): Promise<RegisterDetails> => {
-    const hashObj = await passToHash({ password });
+    const hashObj = passToHash({ password });
     const encPass = await encryptText(hashObj.hash);
     const encSalt = await encryptText(hashObj.salt);
     const mnemonic = bip39.generateMnemonic(256);
@@ -182,14 +174,6 @@ export function useSignUp(
       privateKeyEncrypted: encPrivateKey,
       publicKey: publicKeyArmored,
       revocationCertificate: revocationCertificate,
-      ecc: {
-        privateKeyEncrypted: encPrivateKey,
-        publicKey: publicKeyArmored,
-      },
-      kyber: {
-        publicKey: '',
-        privateKeyEncrypted: '',
-      },
     };
     const registerDetails: RegisterDetails = {
       name: 'My',
