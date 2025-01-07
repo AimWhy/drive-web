@@ -149,8 +149,8 @@ export const doLogin = async (
     tfaCode: twoFactorCode,
   };
   const cryptoProvider: CryptoProvider = {
-    encryptPasswordHash(password: Password, encryptedSalt: string): string {
-      const salt = decryptText(encryptedSalt);
+    async encryptPasswordHash(password: Password, encryptedSalt: string): Promise<string> {
+      const salt = await decryptText(encryptedSalt);
       const hashObj = passToHash({ password, salt });
       return encryptText(hashObj.hash);
     },
