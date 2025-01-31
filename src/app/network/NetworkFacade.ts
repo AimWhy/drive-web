@@ -250,6 +250,49 @@ export class NetworkFacade {
 
     // TODO: Check hash when downloaded
 
+    async function fetchWithRetry(
+      url: string,
+      options?: { abortController?: AbortController },
+      maxRetries = 2,
+      timeoutMs = 10000,
+    ): Promise<ReadableStream<Uint8Array>> {
+      const externalSignal = options?.abortController?.signal;
+
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          const startTime = Date.now();
+          const response =
+            attempt === maxRetries - 1
+              ? await fetch(url, { signal: externalSignal })
+              : await Promise.race([
+                  fetch(url, { signal: externalSignal }),
+                  new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Fetch timed out')), timeoutMs)),
+                ]);
+
+          const duration = Date.now() - startTime;
+          console.log('Duration: ', duration);
+
+          if (!response.body) {
+            throw new Error('No content received');
+          }
+
+          return response.body;
+        } catch (error) {
+          console.warn(`Fetch attempt ${attempt + 1} failed, retrying...`);
+
+          if (attempt === maxRetries - 1) {
+            console.warn('Last attempt, waiting indefinitely...');
+            return fetch(url, { signal: externalSignal }).then((res) => {
+              if (!res.body) throw new Error('No content received');
+              return res.body;
+            });
+          }
+        }
+      }
+
+      throw new Error('Download failed');
+    }
+
     await downloadFile(
       fileId,
       bucketId,
@@ -262,15 +305,8 @@ export class NetworkFacade {
           if (options?.abortController?.signal.aborted) {
             throw new Error('Download aborted');
           }
-
-          const encryptedContentStream = await fetch(downloadable.url, {
-            signal: options?.abortController?.signal,
-          }).then((res) => {
-            if (!res.body) {
-              throw new Error('No content received');
-            }
-
-            return res.body;
+          const encryptedContentStream = await fetchWithRetry(downloadable.url, {
+            abortController: options?.abortController,
           });
 
           encryptedContentStreams.push(encryptedContentStream);
