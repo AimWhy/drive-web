@@ -281,11 +281,8 @@ export class NetworkFacade {
           console.warn(`Fetch attempt ${attempt + 1} failed, retrying...`);
 
           if (attempt === maxRetries - 1) {
-            console.warn('Last attempt, waiting indefinitely...');
-            return fetch(url, { signal: externalSignal }).then((res) => {
-              if (!res.body) throw new Error('No content received');
-              return res.body;
-            });
+            console.warn('Last attempt failed. No more retries.');
+            throw error;
           }
         }
       }
