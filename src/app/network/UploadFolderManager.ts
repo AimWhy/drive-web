@@ -148,6 +148,7 @@ export class UploadFoldersManager {
   );
 
   private readonly uploadFolderAsync = async (taskFolder: TaskFolder) => {
+    console.log('Uploading folder:', { taskFolder });
     const { root: level, currentFolderId, taskId, abortController } = taskFolder;
 
     if (abortController.signal.aborted) return;
@@ -156,6 +157,7 @@ export class UploadFoldersManager {
 
     try {
       const createFolderFunction = async () => {
+        console.log('Creating folder:', level.name, level.folderId);
         createdFolder = await createFolder(
           {
             parentFolderId: level.folderId as string,
@@ -175,10 +177,12 @@ export class UploadFoldersManager {
     }
 
     if (!createdFolder) {
+      console.log('ERROR Creating folder:', level.name, level.folderId, { createdFolder });
       this.stopUploadTask(taskId, abortController);
       this.killQueueAndNotifyError(taskId);
       return;
     }
+    console.log('Created folder:', level.name, level.folderId);
 
     if (!this.tasksInfo[taskId].rootFolderItem) {
       this.tasksInfo[taskId].rootFolderItem = createdFolder;
@@ -200,6 +204,7 @@ export class UploadFoldersManager {
     }
 
     if (level.childrenFiles.length > 0) {
+      console.log('Uploading child files from:', level.name, level.folderId);
       if (abortController.signal.aborted) return;
       await this.dispatch(
         uploadItemsParallelThunk({
@@ -227,6 +232,7 @@ export class UploadFoldersManager {
       )
         .unwrap()
         .catch(() => {
+          console.log('ERROR Uploading child files from:', level.name, level.folderId);
           this.stopUploadTask(taskId, abortController);
           this.killQueueAndNotifyError(taskId);
           return;
@@ -234,8 +240,18 @@ export class UploadFoldersManager {
     }
 
     for (const child of level.childrenFolders) {
+      console.log('Uploading child folders from:', level.name, level.folderId);
       if (abortController.signal.aborted) return;
 
+      console.log('Pushing child folder to the queue:', {
+        taskFolder: {
+          root: { ...child, folderId: createdFolder.uuid },
+          currentFolderId: taskFolder.currentFolderId,
+          options: taskFolder.options,
+          abortController: taskFolder.abortController,
+          taskId: taskFolder.taskId,
+        },
+      });
       this.uploadFoldersQueue.push({
         root: { ...child, folderId: createdFolder.uuid },
         currentFolderId: taskFolder.currentFolderId,
@@ -244,6 +260,8 @@ export class UploadFoldersManager {
         taskId: taskFolder.taskId,
       });
     }
+
+    console.log('Uploaded folder succesfully:', { createdFolder });
 
     return createdFolder;
   };
@@ -346,6 +364,7 @@ export class UploadFoldersManager {
 
       try {
         root.folderId = currentFolderId;
+        console.log('Pushing folder to the queue:', { taskFolder });
         this.uploadFoldersQueue.push(taskFolder);
 
         tasksService.addListener({ event: TaskEvent.TaskCancelled, listener: cancelQueueListener });
