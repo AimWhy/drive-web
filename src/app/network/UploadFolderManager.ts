@@ -365,7 +365,7 @@ export class UploadFoldersManager {
       try {
         root.folderId = currentFolderId;
         console.log('Pushing folder to the queue:', { taskFolder });
-        this.uploadFoldersQueue.push(taskFolder);
+        await this.uploadFoldersQueue.push(taskFolder);
 
         tasksService.addListener({ event: TaskEvent.TaskCancelled, listener: cancelQueueListener });
         tasksService.addListener({ event: TaskEvent.TaskUpdated, listener: updateQueueListener });
