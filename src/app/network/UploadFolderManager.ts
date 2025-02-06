@@ -363,13 +363,13 @@ export class UploadFoldersManager {
         }
       };
 
+      tasksService.addListener({ event: TaskEvent.TaskCancelled, listener: cancelQueueListener });
+      tasksService.addListener({ event: TaskEvent.TaskUpdated, listener: updateQueueListener });
+
       try {
         root.folderId = currentFolderId;
         console.log('Pushing folder to the queue:', { taskFolder });
         await this.uploadFoldersQueue.push(taskFolder);
-
-        tasksService.addListener({ event: TaskEvent.TaskCancelled, listener: cancelQueueListener });
-        tasksService.addListener({ event: TaskEvent.TaskUpdated, listener: updateQueueListener });
 
         while (this.uploadFoldersQueue.running() > 0 || this.uploadFoldersQueue.length() > 0) {
           await this.uploadFoldersQueue.drain();
