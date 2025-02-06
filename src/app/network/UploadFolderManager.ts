@@ -169,7 +169,7 @@ export class UploadFoldersManager {
           { dispatch: this.dispatch },
         );
       };
-      await retry({ times: MAX_UPLOAD_ATTEMPTS, interval: 600 }, createFolderFunction);
+      await createFolderFunction();
     } catch (error) {
       console.log('ERROR Creating folder:', level.name, level.folderId, { error });
       this.stopUploadTask(taskId, abortController);
